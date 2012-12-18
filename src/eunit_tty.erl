@@ -38,7 +38,8 @@
 	 terminate/2]).
 
 -record(state, {verbose = false,
-		indent = 0
+		indent = 0,
+                time = 0
 	       }).
 
 start() ->
@@ -67,26 +68,49 @@ terminate({ok, Data}, St) ->
 	    if Pass =:= 0 ->
 		    fwrite("  There were no tests to run.\n");
 	       true ->
-		    if St#state.verbose -> print_bar();
+		    if St#state.verbose ->
+                            print_bar(),
+                            fwrite(?FYELLOW(?FORMAT("Ran ~p tests in ~.3f s\n",
+                                [Pass+Fail+Skip, St#state.time/1000]
+                            )));
 		       true -> ok
 		    end,
 		    if Pass =:= 1 ->
-			    fwrite("  Test passed.\n");
+			    fwrite(?FGREEN("  Test passed.\n"));
 		       true ->
-			    fwrite("  All ~w tests passed.\n", [Pass])
+			    fwrite(?FGREEN(?FORMAT(
+                                "  All ~w tests passed.\n", [Pass]
+                            )))
 		    end
 	    end,
 	    sync_end(ok);
        true ->
-	    print_bar(),
-	    fwrite("  Failed: ~w.  Skipped: ~w.  Passed: ~w.\n",
-                   [Fail, Skip, Pass]),
-	    if Cancel =/= 0 ->
-		    fwrite("One or more tests were cancelled.\n");
-	       true -> ok
-	    end,
-	    sync_end(error)
+            print_bar(),
+            PassRes = format_result(Pass, "Passed", green),
+            FailRes = format_result(Fail, "Failed"),
+            SkipRes = format_result(Skip, "Skipped"),
+
+            fwrite(?FORMAT("~s ~s ~s\n", [FailRes, SkipRes, PassRes])),
+
+            if Cancel =/= 0 ->
+                    fwrite(?FRED("One or more tests were cancelled.\n"));
+               true -> ok
+            end,
+
+            fwrite(?FYELLOW(?FORMAT("Ran ~p tests in ~.3f s\n",
+                [Pass+Fail+Skip, St#state.time/1000]
+            ))),
+
+            if Fail =/= 0; Skip =/= 0; Cancel =/= 0 ->
+                    fwrite(?FRED("ERROR\n")),
+                    sync_end(error);
+               true ->
+                    fwrite(?FGREEN("OK\n"))
+            end
+
     end;
+
+
 terminate({error, Reason}, _St) ->
     fwrite("Internal error: ~P.\n", [Reason, 25]),
     sync_end(error).
@@ -96,6 +120,18 @@ sync_end(Result) ->
 	{stop, Reference, ReplyTo} ->
 	    ReplyTo ! {result, Reference, Result},
 	    ok
+    end.
+
+format_result(Element, Label) ->
+    format_result(Element, Label, red).
+
+format_result(0, Label, _Color) ->
+    ?FSOLIDGREY(?FORMAT("~s: ~w", [Label, 0]));
+format_result(Element, Label, Color) ->
+    Res = ?FORMAT("~s: ~w", [Label, Element]),
+    case Color of
+        green -> ?FGREEN(Res);
+        _ -> ?FRED(Res)
     end.
 
 print_header() ->
@@ -129,7 +165,7 @@ handle_end(group, Data, St) ->
 	    Time = proplists:get_value(time, Data),
 	    I = St#state.indent,
 	    print_group_end(I, Time),
-	    St#state{indent = I - 1};
+	    St#state{indent = I - 1, time = Time};
        true ->
 	    St
     end;
@@ -187,7 +223,7 @@ print_group_start(I, Desc) ->
 print_group_end(I, Time) ->
     if Time > 0 ->
 	    indent(I),
-	    fwrite("[done in ~.3f s]\n", [Time/1000]);
+	    fwrite(?FYELLOW(?FORMAT("[done in ~.3f s]\n", [Time/1000])));
        true ->
 	    ok
     end.
@@ -204,9 +240,9 @@ print_test_begin(I, Data) ->
 	end,
     case proplists:get_value(source, Data) of
 	{Module, Name, _Arity} ->
-	    fwrite("~s:~s ~s~s...", [Module, L, Name, D]);
+	    fwrite(?FGREY(?FORMAT("~s:~s ~s~s...", [Module, L, Name, D])));
 	_ ->
-	    fwrite("~s~s...", [L, D])
+	    fwrite(?FGREY(?FORMAT("~s~s...", [L, D])))
     end.
 
 print_test_end(Data) ->
@@ -214,11 +250,13 @@ print_test_end(Data) ->
     T = if Time > 0 -> io_lib:fwrite("[~.3f s] ", [Time/1000]);
 	   true -> ""
 	end,
-    fwrite("~sok\n", [T]).
+    fwrite(?FGREEN(?FORMAT("~sok\n", [T]))).
 
 print_test_error({error, Exception}, Data) ->
     Output = proplists:get_value(output, Data),
-    fwrite("*failed*\n~s", [eunit_lib:format_exception(Exception)]),
+    fwrite(?FRED(?FORMAT(
+        "*failed*\n~s", [eunit_lib:format_exception(Exception)]
+    ))),
     case Output of
 	<<>> ->
 	    fwrite("\n\n");

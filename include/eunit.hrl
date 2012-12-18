@@ -29,7 +29,7 @@
 %% is defined before the file is included. If both NOTEST and TEST are
 %% already defined, then TEST takes precedence, and NOTEST will become
 %% undefined.
-%% 
+%%
 %% If NODEBUG is defined before this file is included, the debug macros
 %% are disabled, unless DEBUG is also defined, in which case NODEBUG
 %% will become undefined. NODEBUG also implies NOASSERT, unless testing
@@ -41,12 +41,14 @@
 %% even if NODEBUG is defined. If both ASSERT and NOASSERT are defined
 %% before the file is included, then ASSERT takes precedence, and NOASSERT
 %% will become undefined regardless of TEST.
-%% 
+%%
 %% After including this file, EUNIT will be defined if and only if TEST
 %% is defined.
 
 -ifndef(EUNIT_HRL).
 -define(EUNIT_HRL, true).
+
+-define(EUNIT_COLOR, true).
 
 
 %% allow defining TEST to override NOTEST
@@ -101,7 +103,7 @@
 
 %% All macros should be available even if testing is turned off, and
 %% should preferably not require EUnit to be present at runtime.
-%% 
+%%
 %% We must use fun-call wrappers ((fun () -> ... end)()) to avoid
 %% exporting local variables, and furthermore we only use variable names
 %% prefixed with "__", that hopefully will not be bound outside the fun.
@@ -425,5 +427,28 @@
 	  end)())).
 -endif.
 
+%% format with colors
+
+-ifdef(EUNIT_COLOR).
+
+-define(FORMAT(Msg, List), lists:flatten(io_lib:format(Msg, List))).
+-define(FRED(Msg),io_lib:format("\033[31m~s\033[0m", [Msg])).
+-define(FGREEN(Msg),io_lib:format("\033[32m~s\033[0m", [Msg])).
+-define(FYELLOW(Msg),io_lib:format("\033[33m~s\033[0m", [Msg])).
+-define(FBLUE(Msg),io_lib:format("\033[34m~s\033[0m", [Msg])).
+-define(FGREY(Msg),io_lib:format("\033[1;30m~s\033[0m", [Msg])).
+-define(FSOLIDGREY(Msg),io_lib:format("\033[30m~s\033[0m", [Msg])).
+
+-else.
+
+-define(FORMAT(Msg, List), lists:flatten(io_lib:format(Msg, List))).
+-define(FRED(Msg),Msg).
+-define(FGREEN(Msg),Msg).
+-define(FYELLOW(Msg),Msg).
+-define(FBLUE(Msg),Msg).
+-define(FGREY(Msg),Msg).
+-define(FSOLIDGREY(Msg),Msg).
+
+-endif.
 
 -endif. % EUNIT_HRL
