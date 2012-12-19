@@ -48,9 +48,6 @@
 -ifndef(EUNIT_HRL).
 -define(EUNIT_HRL, true).
 
--define(EUNIT_COLOR, true).
-
-
 %% allow defining TEST to override NOTEST
 -ifdef(TEST).
 -undef(NOTEST).
@@ -425,30 +422,6 @@
 		  ?debugFmt(<<"~s: ~.3f s">>, [(S), (__T1-__T0)/1000]),
 		  __V
 	  end)())).
--endif.
-
-%% format with colors
-
--ifdef(EUNIT_COLOR).
-
--define(FORMAT(Msg, List), lists:flatten(io_lib:format(Msg, List))).
--define(FRED(Msg),io_lib:format("\033[31m~s\033[0m", [Msg])).
--define(FGREEN(Msg),io_lib:format("\033[32m~s\033[0m", [Msg])).
--define(FYELLOW(Msg),io_lib:format("\033[33m~s\033[0m", [Msg])).
--define(FBLUE(Msg),io_lib:format("\033[34m~s\033[0m", [Msg])).
--define(FGREY(Msg),io_lib:format("\033[1;30m~s\033[0m", [Msg])).
--define(FSOLIDGREY(Msg),io_lib:format("\033[30m~s\033[0m", [Msg])).
-
--else.
-
--define(FORMAT(Msg, List), lists:flatten(io_lib:format(Msg, List))).
--define(FRED(Msg),Msg).
--define(FGREEN(Msg),Msg).
--define(FYELLOW(Msg),Msg).
--define(FBLUE(Msg),Msg).
--define(FGREY(Msg),Msg).
--define(FSOLIDGREY(Msg),Msg).
-
 -endif.
 
 -endif. % EUNIT_HRL

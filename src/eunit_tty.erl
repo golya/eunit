@@ -29,6 +29,32 @@
 -behaviour(eunit_listener).
 
 -define(NODEBUG, true).
+-define(EUNIT_COLOR, true).
+
+%% format with colors
+
+-ifdef(EUNIT_COLOR).
+
+-define(EUNIT_FORMAT(Msg, List), lists:flatten(io_lib:format(Msg, List))).
+-define(FRED(Msg),io_lib:format("\033[31m~s\033[0m", [Msg])).
+-define(FGREEN(Msg),io_lib:format("\033[32m~s\033[0m", [Msg])).
+-define(FYELLOW(Msg),io_lib:format("\033[33m~s\033[0m", [Msg])).
+-define(FBLUE(Msg),io_lib:format("\033[34m~s\033[0m", [Msg])).
+-define(FGREY(Msg),io_lib:format("\033[1;30m~s\033[0m", [Msg])).
+-define(FSOLIDGREY(Msg),io_lib:format("\033[30m~s\033[0m", [Msg])).
+
+-else.
+
+-define(EUNIT_FORMAT(Msg, List), lists:flatten(io_lib:format(Msg, List))).
+-define(FRED(Msg),Msg).
+-define(FGREEN(Msg),Msg).
+-define(FYELLOW(Msg),Msg).
+-define(FBLUE(Msg),Msg).
+-define(FGREY(Msg),Msg).
+-define(FSOLIDGREY(Msg),Msg).
+
+-endif.
+
 -include("eunit.hrl").
 -include("eunit_internal.hrl").
 
@@ -70,7 +96,8 @@ terminate({ok, Data}, St) ->
 	       true ->
 		    if St#state.verbose ->
                             print_bar(),
-                            fwrite(?FYELLOW(?FORMAT("Ran ~p tests in ~.3f s\n",
+                            fwrite(?FYELLOW(?EUNIT_FORMAT(
+                                "Ran ~p tests in ~.3f s\n",
                                 [Pass+Fail+Skip, St#state.time/1000]
                             )));
 		       true -> ok
@@ -78,7 +105,7 @@ terminate({ok, Data}, St) ->
 		    if Pass =:= 1 ->
 			    fwrite(?FGREEN("  Test passed.\n"));
 		       true ->
-			    fwrite(?FGREEN(?FORMAT(
+			    fwrite(?FGREEN(?EUNIT_FORMAT(
                                 "  All ~w tests passed.\n", [Pass]
                             )))
 		    end
@@ -90,14 +117,14 @@ terminate({ok, Data}, St) ->
             FailRes = format_result(Fail, "Failed"),
             SkipRes = format_result(Skip, "Skipped"),
 
-            fwrite(?FORMAT("~s ~s ~s\n", [FailRes, SkipRes, PassRes])),
+            fwrite(?EUNIT_FORMAT("~s ~s ~s\n", [FailRes, SkipRes, PassRes])),
 
             if Cancel =/= 0 ->
                     fwrite(?FRED("One or more tests were cancelled.\n"));
                true -> ok
             end,
 
-            fwrite(?FYELLOW(?FORMAT("Ran ~p tests in ~.3f s\n",
+            fwrite(?FYELLOW(?EUNIT_FORMAT("Ran ~p tests in ~.3f s\n",
                 [Pass+Fail+Skip, St#state.time/1000]
             ))),
 
@@ -126,9 +153,9 @@ format_result(Element, Label) ->
     format_result(Element, Label, red).
 
 format_result(0, Label, _Color) ->
-    ?FSOLIDGREY(?FORMAT("~s: ~w", [Label, 0]));
+    ?FSOLIDGREY(?EUNIT_FORMAT("~s: ~w", [Label, 0]));
 format_result(Element, Label, Color) ->
-    Res = ?FORMAT("~s: ~w", [Label, Element]),
+    Res = ?EUNIT_FORMAT("~s: ~w", [Label, Element]),
     case Color of
         green -> ?FGREEN(Res);
         _ -> ?FRED(Res)
@@ -223,7 +250,9 @@ print_group_start(I, Desc) ->
 print_group_end(I, Time) ->
     if Time > 0 ->
 	    indent(I),
-	    fwrite(?FYELLOW(?FORMAT("[done in ~.3f s]\n", [Time/1000])));
+	    fwrite(?FYELLOW(?EUNIT_FORMAT(
+                "[done in ~.3f s]\n", [Time/1000]
+            )));
        true ->
 	    ok
     end.
@@ -240,9 +269,11 @@ print_test_begin(I, Data) ->
 	end,
     case proplists:get_value(source, Data) of
 	{Module, Name, _Arity} ->
-	    fwrite(?FGREY(?FORMAT("~s:~s ~s~s...", [Module, L, Name, D])));
+	    fwrite(?FGREY(?EUNIT_FORMAT(
+                "~s:~s ~s~s...", [Module, L, Name, D]
+            )));
 	_ ->
-	    fwrite(?FGREY(?FORMAT("~s~s...", [L, D])))
+	    fwrite(?FGREY(?EUNIT_FORMAT("~s~s...", [L, D])))
     end.
 
 print_test_end(Data) ->
@@ -250,11 +281,11 @@ print_test_end(Data) ->
     T = if Time > 0 -> io_lib:fwrite("[~.3f s] ", [Time/1000]);
 	   true -> ""
 	end,
-    fwrite(?FGREEN(?FORMAT("~sok\n", [T]))).
+    fwrite(?FGREEN(?EUNIT_FORMAT("~sok\n", [T]))).
 
 print_test_error({error, Exception}, Data) ->
     Output = proplists:get_value(output, Data),
-    fwrite(?FRED(?FORMAT(
+    fwrite(?FRED(?EUNIT_FORMAT(
         "*failed*\n~s", [eunit_lib:format_exception(Exception)]
     ))),
     case Output of
